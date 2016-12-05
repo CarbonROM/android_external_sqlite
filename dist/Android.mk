@@ -35,6 +35,7 @@ minimal_linux_flags := \
 device_sqlite_flags := $(minimal_sqlite_flags) \
     -DSQLITE_ENABLE_ICU \
     -DUSE_PREAD64 \
+    -DSQLITE_DEFAULT_SYNCHRONOUS=0 \
     -Dfdatasync=fdatasync \
     -DHAVE_MALLOC_H=1 \
     -DHAVE_MALLOC_USABLE_SIZE
