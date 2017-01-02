@@ -1,6 +1,6 @@
 diff -r -u -d orig/shell.c ./shell.c
---- orig/shell.c	2016-11-29 04:29:24.000000000 +0900
-+++ ./shell.c	2016-12-06 00:58:36.768702411 +0900
+--- orig/shell.c	2017-01-02 14:33:34.000000000 -0800
++++ ./shell.c	2017-01-02 14:33:35.000000000 -0800
 @@ -52,6 +52,12 @@
  #endif
  #include <ctype.h>
@@ -14,7 +14,7 @@ diff -r -u -d orig/shell.c ./shell.c
  
  #if !defined(_WIN32) && !defined(WIN32)
  # include <signal.h>
-@@ -2395,6 +2401,22 @@
+@@ -2442,6 +2448,22 @@
                              readfileFunc, 0, 0);
      sqlite3_create_function(p->db, "writefile", 2, SQLITE_UTF8, 0,
                              writefileFunc, 0, 0);
@@ -38,9 +38,9 @@ diff -r -u -d orig/shell.c ./shell.c
  }
  
 diff -r -u -d orig/sqlite3.c ./sqlite3.c
---- orig/sqlite3.c	2016-11-29 04:29:24.000000000 +0900
-+++ ./sqlite3.c	2016-12-06 00:58:36.787701965 +0900
-@@ -33035,7 +33035,7 @@
+--- orig/sqlite3.c	2017-01-02 14:33:35.000000000 -0800
++++ ./sqlite3.c	2017-01-02 14:37:52.757879756 -0800
+@@ -33329,7 +33329,7 @@
    SimulateIOError( rc=1 );
    if( rc!=0 ){
      storeLastErrno((unixFile*)id, errno);
@@ -49,7 +49,7 @@ diff -r -u -d orig/sqlite3.c ./sqlite3.c
    }
    *pSize = buf.st_size;
  
-@@ -33071,7 +33071,7 @@
+@@ -33365,7 +33365,7 @@
      struct stat buf;              /* Used to hold return values of fstat() */
     
      if( osFstat(pFile->h, &buf) ){
@@ -58,7 +58,7 @@ diff -r -u -d orig/sqlite3.c ./sqlite3.c
      }
  
      nSize = ((nByte+pFile->szChunk-1) / pFile->szChunk) * pFile->szChunk;
-@@ -33645,7 +33645,7 @@
+@@ -33939,7 +33939,7 @@
      ** with the same permissions.
      */
      if( osFstat(pDbFd->h, &sStat) ){
@@ -67,7 +67,62 @@ diff -r -u -d orig/sqlite3.c ./sqlite3.c
        goto shm_open_err;
      }
  
-@@ -113802,7 +113802,7 @@
+@@ -50212,15 +50212,9 @@
+   unsigned pgFlags      /* Various flags */
+ ){
+   unsigned level = pgFlags & PAGER_SYNCHRONOUS_MASK;
+-  if( pPager->tempFile ){
+-    pPager->noSync = 1;
+-    pPager->fullSync = 0;
+-    pPager->extraSync = 0;
+-  }else{
+-    pPager->noSync =  level==PAGER_SYNCHRONOUS_OFF ?1:0;
+-    pPager->fullSync = level>=PAGER_SYNCHRONOUS_FULL ?1:0;
+-    pPager->extraSync = level==PAGER_SYNCHRONOUS_EXTRA ?1:0;
+-  }
++  pPager->noSync =  1;
++  pPager->fullSync = 0;
++  pPager->extraSync = 0;
+   if( pPager->noSync ){
+     pPager->syncFlags = 0;
+     pPager->ckptSyncFlags = 0;
+@@ -51525,20 +51519,12 @@
+   pPager->memDb = (u8)memDb;
+   pPager->readOnly = (u8)readOnly;
+   assert( useJournal || pPager->tempFile );
+-  pPager->noSync = pPager->tempFile;
+-  if( pPager->noSync ){
+-    assert( pPager->fullSync==0 );
+-    assert( pPager->extraSync==0 );
+-    assert( pPager->syncFlags==0 );
+-    assert( pPager->walSyncFlags==0 );
+-    assert( pPager->ckptSyncFlags==0 );
+-  }else{
+-    pPager->fullSync = 1;
+-    pPager->extraSync = 0;
+-    pPager->syncFlags = SQLITE_SYNC_NORMAL;
+-    pPager->walSyncFlags = SQLITE_SYNC_NORMAL | WAL_SYNC_TRANSACTIONS;
+-    pPager->ckptSyncFlags = SQLITE_SYNC_NORMAL;
+-  }
++  pPager->noSync = 1;
++  assert( pPager->fullSync==0 );
++  assert( pPager->extraSync==0 );
++  assert( pPager->syncFlags==0 );
++  assert( pPager->walSyncFlags==0 );
++  assert( pPager->ckptSyncFlags==0 );
+   /* pPager->pFirst = 0; */
+   /* pPager->pFirstSynced = 0; */
+   /* pPager->pLast = 0; */
+@@ -98160,7 +98146,7 @@
+ #endif
+     sqlite3BtreeLeave(aNew->pBt);
+   }
+-  aNew->safety_level = SQLITE_DEFAULT_SYNCHRONOUS+1;
++  aNew->safety_level = 1;
+   aNew->zDbSName = sqlite3DbStrDup(db, zName);
+   if( rc==SQLITE_OK && aNew->zDbSName==0 ){
+     rc = SQLITE_NOMEM_BKPT;
+@@ -114815,7 +114801,7 @@
    }
    if( pDb->pSchema->file_format>SQLITE_MAX_FILE_FORMAT ){
      sqlite3SetString(pzErrMsg, db, "unsupported file format");
@@ -76,7 +131,16 @@ diff -r -u -d orig/sqlite3.c ./sqlite3.c
      goto initone_error_out;
    }
  
-@@ -147060,13 +147060,25 @@
+@@ -141859,7 +141845,7 @@
+   ** database it is OFF. This matches the pager layer defaults.  
+   */
+   db->aDb[0].zDbSName = "main";
+-  db->aDb[0].safety_level = SQLITE_DEFAULT_SYNCHRONOUS+1;
++  db->aDb[0].safety_level = 1;
+   db->aDb[1].zDbSName = "temp";
+   db->aDb[1].safety_level = PAGER_SYNCHRONOUS_OFF;
+ 
+@@ -148155,13 +148141,25 @@
    ** module with sqlite.
    */
    if( SQLITE_OK==rc 
